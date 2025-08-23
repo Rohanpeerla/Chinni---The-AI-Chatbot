@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>💬 Chinni - The AI Chatbot</title>
+  <style>
+  pre {
+    background: #2d3748;
+    color: #e2e8f0;
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 10px 0;
+    font-size: 15px;
+  }
+  code {
+    font-family: 'Courier New', monospace;
+  }
+  pre code {
+    background: none;
+    color: #ffffff;
+    padding: 0;
+  }
+</style>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+      color: #333;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 900px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+      margin: 30px auto;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 80vh;
+    }
+
+    .chat-header {
+      background: #6a11cb;
+      color: white;
+      padding: 15px 20px;
+      font-size: 1.5em;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .chat-body {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      background: #f9f9ff;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .user-msg {
+      background: #2575fc;
+      color: white;
+      padding: 12px 18px;
+      border-radius: 18px 18px 0 18px;
+      max-width: 70%;
+      align-self: flex-end;
+      font-size: 16px;
+    }
+
+    .bot-msg {
+      background: #e0e0ef;
+      color: #333;
+      padding: 12px 18px;
+      border-radius: 18px 18px 18px 0;
+      max-width: 70%;
+      align-self: flex-start;
+      font-size: 16px;
+    }
+
+    .chat-footer {
+      padding: 15px;
+      background: white;
+      display: flex;
+      gap: 10px;
+      border-top: 1px solid #ddd;
+    }
+
+    #message-input {
+      flex: 1;
+      padding: 14px;
+      font-size: 16px;
+      border: 2px solid #2575fc;
+      border-radius: 10px;
+      outline: none;
+    }
+
+    #send-btn, #clear-btn {
+      padding: 10px 20px;
+      background: #6a11cb;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    #send-btn:hover {
+      background: #5a0fb0;
+    }
+
+    #clear-btn {
+      background: #ff6b6b;
+    }
+
+    #clear-btn:hover {
+      background: #e05a5a;
+    }
+
+    footer {
+      margin-top: 20px;
+      color: white;
+      font-size: 0.9em;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="chat-header">
+      🤖 Chinni - The AI Chatbot 
+    </div>
+
+    <div class="chat-body" id="chat-body">
+      
+      <div class="bot-msg">
+        Hello! I'm your AI assistant. Ask me anything!
+      </div>
+    </div>
+
+    <div class="chat-footer">
+      <input type="text" id="message-input" placeholder="Type your message..." onkeypress="if(event.key==='Enter')send()">
+      <button id="send-btn" onclick="send()">Send</button>
+      <button id="clear-btn" onclick="clearChat()">Clear</button>
+    </div>
+  </div>
+
+  <footer>
+    Powered by Groq & Llama 3 • Super Fast AI Chat
+  </footer>
+
+<script>
+  const chatBody = document.getElementById("chat-body");
+
+  function scrollToBottom() {
+    chatBody.scrollTop = chatBody.scrollHeight;
+  }
+
+  
+  function send() {
+    const input = document.getElementById("message-input");
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    
+    const userDiv = document.createElement("div");
+    userDiv.className = "user-msg";
+    userDiv.textContent = message;
+    chatBody.appendChild(userDiv);
+
+    input.value = ""; 
+
+    const tempBotDiv = document.createElement("div");
+    tempBotDiv.className = "bot-msg";
+    tempBotDiv.textContent = "AI is typing...";
+
+    chatBody.appendChild(tempBotDiv);
+
+    scrollToBottom();
+
+    
+    fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: message })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.reply) {
+        tempBotDiv.textContent = data.reply;
+      } else {
+        tempBotDiv.textContent = "❌ Error: " + data.error;
+      }
+      scrollToBottom();
+    })
+    .catch(err => {
+      tempBotDiv.textContent = "❌ Connection failed. Is the server running?";
+      console.error("Fetch error:", err);
+    });
+  }
+
+  // Clear chat history
+  function clearChat() {
+    fetch("/clear", { method: "POST" })
+      .then(() => {
+        chatBody.innerHTML = "";
+        const welcome = document.createElement("div");
+        welcome.className = "bot-msg";
+        welcome.textContent = "Chat cleared. Ask me anything!";
+        chatBody.appendChild(welcome);
+        scrollToBottom();
+      })
+      .catch(err => {
+        console.error("Clear error:", err);
+      });
+  }
+
+  // Allow Enter key to send
+  document.getElementById("message-input").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+      send();
+    }
+  });
+
+  // Focus input on load
+  document.getElementById("message-input").focus();
+  scrollToBottom();
+</script>
+</body>
+</html>
